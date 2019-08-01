@@ -15,6 +15,17 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jiamiao.x.RabbitMq.WorkQueu
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jiamiao.x.RabbitMq.WorkQueues.Receive", "Jiamiao.x.RabbitMq.WorkQueues.Receive\Jiamiao.x.RabbitMq.WorkQueues.Receive.csproj", "{81B90E25-39C8-4BD7-BE28-F23F2A1C07CB}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "doc", "doc", "{84718170-9DFA-4069-8D9E-0EC362AB30EF}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "3.Publish_Subscribe", "3.Publish_Subscribe", "{34DC288B-1CA6-4272-85AE-03B41478F369}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jiamiao.x.RabbitMq.Publish_Subscribe.Publish", "Jiamiao.x.RabbitMq.Publish_Subscribe.Publish\Jiamiao.x.RabbitMq.Publish_Subscribe.Publish.csproj", "{D14948F3-F398-4900-BAE3-798DD1F47B17}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jiamiao.x.RabbitMq.Publish_Subscribe.Subscribe", "Jiamiao.x.RabbitMq.Publish_Subscribe.Subscribe\Jiamiao.x.RabbitMq.Publish_Subscribe.Subscribe.csproj", "{98946453-2621-4D72-83AD-10635443BB25}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -37,6 +48,14 @@ Global
 		{81B90E25-39C8-4BD7-BE28-F23F2A1C07CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{81B90E25-39C8-4BD7-BE28-F23F2A1C07CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{81B90E25-39C8-4BD7-BE28-F23F2A1C07CB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D14948F3-F398-4900-BAE3-798DD1F47B17}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D14948F3-F398-4900-BAE3-798DD1F47B17}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D14948F3-F398-4900-BAE3-798DD1F47B17}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D14948F3-F398-4900-BAE3-798DD1F47B17}.Release|Any CPU.Build.0 = Release|Any CPU
+		{98946453-2621-4D72-83AD-10635443BB25}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{98946453-2621-4D72-83AD-10635443BB25}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{98946453-2621-4D72-83AD-10635443BB25}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{98946453-2621-4D72-83AD-10635443BB25}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -46,6 +65,8 @@ Global
 		{624E8A59-046E-486E-99A3-DC56F29D454C} = {F028CC0A-6E95-4F8F-B057-9DED34E98E3A}
 		{11018795-0FDC-4211-8D4A-6E909F02CB70} = {DE7C1A64-E440-4173-9781-4DB180B05C85}
 		{81B90E25-39C8-4BD7-BE28-F23F2A1C07CB} = {DE7C1A64-E440-4173-9781-4DB180B05C85}
+		{D14948F3-F398-4900-BAE3-798DD1F47B17} = {34DC288B-1CA6-4272-85AE-03B41478F369}
+		{98946453-2621-4D72-83AD-10635443BB25} = {34DC288B-1CA6-4272-85AE-03B41478F369}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {24F5127C-447A-42CE-B752-CCDAEB02403E}
