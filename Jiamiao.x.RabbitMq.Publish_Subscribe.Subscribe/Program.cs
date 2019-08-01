@@ -16,7 +16,7 @@ namespace Jiamiao.x.RabbitMq.Publish_Subscribe.Subscribe
             var factory = new ConnectionFactory() {HostName = "localhost"};
             using var connection = factory.CreateConnection();
             using var channel = connection.CreateModel();
-            channel.ExchangeDeclare("logs","fanout");
+            channel.ExchangeDeclare("logs",ExchangeType.Fanout);
 
             var queueName = channel.QueueDeclare().QueueName;
             channel.QueueBind(queueName, "logs", "");

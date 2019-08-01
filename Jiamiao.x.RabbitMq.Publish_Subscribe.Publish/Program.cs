@@ -14,7 +14,7 @@ namespace Jiamiao.x.RabbitMq.Publish_Subscribe.Publish
             using var connection = factory.CreateConnection();
             using var channel = connection.CreateModel();
             // 定义名叫logs的广播类型交换器
-            channel.ExchangeDeclare("logs","fanout");
+            channel.ExchangeDeclare("logs",ExchangeType.Fanout);
 
             for (int i = 0; i < 50; i++)
             {
