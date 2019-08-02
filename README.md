@@ -1,3 +1,4 @@
+- [前置条件](#%e5%89%8d%e7%bd%ae%e6%9d%a1%e4%bb%b6)
 - [1.HelloWorld](#1helloworld)
   - [参考文档](#%e5%8f%82%e8%80%83%e6%96%87%e6%a1%a3)
   - [流程图](#%e6%b5%81%e7%a8%8b%e5%9b%be)
@@ -17,6 +18,10 @@
 - [6.RPC](#6rpc)
   - [参考文档](#%e5%8f%82%e8%80%83%e6%96%87%e6%a1%a3-5)
 
+## 前置条件
+1. 已安装RabbitMQ，并且运行在`localhost`标准端口`5672`上
+2. 项目均为`.net core 2.2`控制台项目
+3. 项目均需安装`RabbitMQ.Client`，目前版本为`5.1.0`
 
 ## 1.HelloWorld
 ### 参考文档
@@ -28,6 +33,22 @@ https://yq.aliyun.com/articles/642459
 生产者将`Hello world`字符串写入名字为`hello`的队列中，消息队列将此字符串推送至消费者，由消费者打印到控制台
 #### 生产者
 - 项目名称：Jiamiao.x.RabbitMq.HelloWorld.Send
+- 实例化*ConnectionFactory*，创建*Connection*，创建*Channel*
+  ```C#
+  var factory = new ConnectionFactory() {HostName = "localhost"};
+  using var connection = factory.CreateConnection();
+  using var channel = connection.CreateModel();
+  ```
+- 定义名字为*hello*的消息队列
+  ```C#
+  channel.QueueDeclare("hello", false, false, false, null);
+  ```
+- 发送*Hello world*字符串到队列中
+  ```C#
+  var message = "Hello world";
+  var body = Encoding.UTF8.GetBytes(message);
+  channel.BasicPublish(exchange: "", routingKey: "hello", basicProperties: null, body: body);
+  ```
 #### 消费者
 - 项目名称：Jiamiao.x.RabbitMq.HelloWorld.Receive
 ### 运行
