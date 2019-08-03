@@ -16,7 +16,7 @@ namespace Jiamiao.x.RabbitMq.WorkQueues.Send
 
             // 声明队列，通过指定durable参数为true，对消息进行持久化处理。 
             // 生产者和消费者声明队列的时候都需要指定durable参数为true，才能对消息进行持久化处理
-            channel.QueueDeclare("task_queue", true, false, false, null);
+            channel.QueueDeclare("task_queue",  durable:true, exclusive:false, autoDelete:false, arguments: null);
 
             for (int i = 0; i < 50; i++)
             {
@@ -34,7 +34,7 @@ namespace Jiamiao.x.RabbitMq.WorkQueues.Send
                  * 消息的持久化保证并不健壮，但对于简单的任务队列来说已经足够了。如果您需要一个更加健壮的保证，可以使用 发布者确认。
                  */
 
-                channel.BasicPublish("", "task_queue", properties, body);
+                channel.BasicPublish(exchange: "", routingKey: "task_queue", basicProperties: properties, body: body); 
                 Console.WriteLine($"[{message}]  --> Send");
                 Thread.Sleep(2000);
             }

@@ -12,6 +12,13 @@
     - [消费者](#%e6%b6%88%e8%b4%b9%e8%80%85-1)
 - [2.WorkQueues](#2workqueues)
   - [参考文档](#%e5%8f%82%e8%80%83%e6%96%87%e6%a1%a3-1)
+  - [流程图](#%e6%b5%81%e7%a8%8b%e5%9b%be-1)
+  - [解析](#%e8%a7%a3%e6%9e%90-1)
+    - [业务流程](#%e4%b8%9a%e5%8a%a1%e6%b5%81%e7%a8%8b)
+    - [生产者](#%e7%94%9f%e4%ba%a7%e8%80%85-2)
+    - [消费者](#%e6%b6%88%e8%b4%b9%e8%80%85-2)
+  - [运行](#%e8%bf%90%e8%a1%8c-1)
+  - [全部代码](#%e5%85%a8%e9%83%a8%e4%bb%a3%e7%a0%81-1)
 - [3.Publish/Subscribe](#3publishsubscribe)
   - [参考文档](#%e5%8f%82%e8%80%83%e6%96%87%e6%a1%a3-2)
 - [4.Routing](#4routing)
@@ -152,6 +159,38 @@ namespace Jiamiao.x.RabbitMq.HelloWorld.Receive
 ## 2.WorkQueues
 ### 参考文档
 https://yq.aliyun.com/articles/642456
+### 流程图
+![WorkQueue.png](https://i.loli.net/2019/08/03/NkjqrLyFbAK8Jxu.png)
+### 解析
+#### 业务流程
+生产者将当前时间写入`task_queue`消息队列中，标记消息持久化，同时启用多个消费者对消息进行消费，消费者处理完消息之后手动确认消息已处理完
+#### 生产者
+- 项目名称：Jiamiao.x.RabbitMq.WorkQueues.Send
+- 实例化*ConnectionFactory*，创建*Connection*，创建*Channel*
+  ```C#
+  var factory = new ConnectionFactory() {HostName = "localhost"};
+  using var connection = factory.CreateConnection();
+  using var channel = connection.CreateModel();
+  ```
+- 定义*task_queue*消息队列，其中指定*durable*参数为*true*才能对消息进行持久化
+  ```C#
+  channel.QueueDeclare("task_queue",  durable:true, exclusive:false, autoDelete:false, arguments: null);
+  ```
+- *properties.Persistent=true* 将消息标记为持久的，并发送消息
+  ```C#
+  var message = $"Send message -> {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+  var body = Encoding.UTF8.GetBytes(message);
+  var properties = channel.CreateBasicProperties();
+  properties.Persistent = true;
+  channel.BasicPublish(exchange: "", routingKey: "task_queue", basicProperties: properties, body: body); 
+  ```
+- 备注：即使将消息标记为持久化，但*RabbitMQ*接收到消息后并不会马上进行持久化，而是写入缓存，一段时间后才进行持久化操作。消息的持久化保证并不健壮，对于简单的消息队列来说足够，如果需要足够健壮的保证，可以使用 [发布者确认](https://www.rabbitmq.com/confirms.html)
+#### 消费者
+- 项目名称：Jiamiao.x.RabbitMq.WorkQueues.Receive
+- 实例化*ConnectionFactory*，创建*Connection*，创建*Channel*，定义*task_queue*消息队列与生产者代码一致
+- 
+### 运行
+### 全部代码
 
 
 ## 3.Publish/Subscribe
