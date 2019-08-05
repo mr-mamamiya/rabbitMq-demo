@@ -19,6 +19,8 @@
     - [消费者](#%e6%b6%88%e8%b4%b9%e8%80%85-2)
   - [运行](#%e8%bf%90%e8%a1%8c-1)
   - [全部代码](#%e5%85%a8%e9%83%a8%e4%bb%a3%e7%a0%81-1)
+    - [生产者](#%e7%94%9f%e4%ba%a7%e8%80%85-3)
+    - [消费者](#%e6%b6%88%e8%b4%b9%e8%80%85-3)
 - [3.Publish/Subscribe](#3publishsubscribe)
   - [参考文档](#%e5%8f%82%e8%80%83%e6%96%87%e6%a1%a3-2)
 - [4.Routing](#4routing)
@@ -188,10 +190,123 @@ https://yq.aliyun.com/articles/642456
 #### 消费者
 - 项目名称：Jiamiao.x.RabbitMq.WorkQueues.Receive
 - 实例化*ConnectionFactory*，创建*Connection*，创建*Channel*，定义*task_queue*消息队列与生产者代码一致
-- 
-### 运行
-### 全部代码
+- 设置发送消息策略：不要向一个消费者发送新消息，知道他处理并确认了上一个消息
+  ```C#
+  channel.BasicQos(0, 1, false);
+  ```
+- 创建消费者*consumer*，指定消费者接受到消息的处理事件，并手动回复消息确认信号
+  ```C#
+  var consumer = new EventingBasicConsumer(channel);
+  consumer.Received += (model, ea) =>
+  {
+      var body = ea.Body;
+      var message = Encoding.UTF8.GetString(body);
+      Console.WriteLine($"{message}");
+      // 为保证看出效果，假设处理任务需要5秒钟
+      Thread.Sleep(5000);
+      // 手动发送消息确认信号
+      channel.BasicAck(ea.DeliveryTag, false);
+  };
+  ```
+- 绑定*Channel*消费者，并指定不自动回复消息确认信号
+  ```C#
+  channel.BasicConsume("task_queue", false, consumer); 
+  ```
 
+### 运行
+1. 运行消费者A
+   ```bash
+   cd Jiamiao.x.RabbitMq.WorkQueues.Receive
+   dotnet run receiverA
+   ```
+2. 运行消费者B
+   ```bash
+   cd Jiamiao.x.RabbitMq.WorkQueues.Receive
+   dotnet run receiverB
+   ```
+3. 运行生产者
+   ```bash
+   cd Jiamiao.x.RabbitMq.WorkQueues.Send
+   dotnet run
+   ```
+### 全部代码
+#### 生产者
+```C#
+using System;
+using System.Text;
+using System.Threading;
+using RabbitMQ.Client;
+
+namespace Jiamiao.x.RabbitMq.WorkQueues.Send
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine("========== WorkQueues.Send ==========");
+            var factory = new ConnectionFactory() {HostName = "localhost"};
+            using var connection = factory.CreateConnection();
+            using var channel = connection.CreateModel();
+            channel.QueueDeclare("task_queue",  durable:true, exclusive:false, autoDelete:false, arguments: null);
+            // 为了模拟效果，这里发出50条消息，每条消息间隔2秒钟
+            for (int i = 0; i < 50; i++)
+            {
+                var message = $"Send message -> {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+                var body = Encoding.UTF8.GetBytes(message);
+                var properties = channel.CreateBasicProperties();
+                properties.Persistent = true;
+                channel.BasicPublish(exchange: "", routingKey: "task_queue", basicProperties: properties, body: body); 
+                Console.WriteLine($"[{message}]  --> Send");
+                Thread.Sleep(2000);
+            }
+            Console.WriteLine("Press anyKey to exit");
+            Console.ReadKey();
+        }
+
+    }
+}
+```
+#### 消费者
+```C#
+using System;
+using System.Text;
+using System.Threading;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+
+namespace Jiamiao.x.RabbitMq.WorkQueues.Receive
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            var receiverName = args[0];
+            Console.WriteLine($"========== WorkQueues.Receive-{receiverName} ==========");
+            var factory = new ConnectionFactory() {HostName = "localhost"};
+            using var connection = factory.CreateConnection();
+            using var channel = connection.CreateModel();
+            channel.QueueDeclare("task_queue", true, false, false, null);
+            channel.BasicQos(0, 1, false);
+            Console.WriteLine("Waiting for message...");
+            var consumer = new EventingBasicConsumer(channel);
+            consumer.Received += (model, ea) =>
+            {
+                var body = ea.Body;
+                var message = Encoding.UTF8.GetString(body);
+                Console.WriteLine($"{message}");
+                Thread.Sleep(5000);
+                // 手动发送消息确认信号
+                channel.BasicAck(ea.DeliveryTag, false);
+            };
+            // autoAck:false - 关闭自动消息确认，调用`BasicAck`方法进行手动消息确认。
+            // autoAck:true  - 开启自动消息确认，当消费者接收到消息后就自动发送ack信号，无论消息是否正确处理完毕。
+            channel.BasicConsume("task_queue", false, consumer); 
+            Console.WriteLine("Press anyKey to exit");
+            Console.ReadKey();
+        }
+    }
+}
+```
 
 ## 3.Publish/Subscribe
 ### 参考文档
