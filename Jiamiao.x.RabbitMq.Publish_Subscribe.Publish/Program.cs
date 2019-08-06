@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using System.Threading;
 using RabbitMQ.Client;
 
 namespace Jiamiao.x.RabbitMq.Publish_Subscribe.Publish
@@ -17,13 +18,12 @@ namespace Jiamiao.x.RabbitMq.Publish_Subscribe.Publish
             channel.ExchangeDeclare("logs",ExchangeType.Fanout);
 
             for (int i = 0; i < 50; i++)
-            {
-
-                var message = $"Publish message-{i} -> {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+            { 
+                var message = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}";
                 var body = Encoding.UTF8.GetBytes(message);
-
-                channel.BasicPublish("logs", "", null, body);
+                channel.BasicPublish(exchange:"logs", routingKey:"", basicProperties:null, body:body);
                 Console.WriteLine($"Send Content [{message}]");
+                Thread.Sleep(1000);
             }
 
 

@@ -23,6 +23,16 @@
     - [消费者](#%e6%b6%88%e8%b4%b9%e8%80%85-3)
 - [3.Publish/Subscribe](#3publishsubscribe)
   - [参考文档](#%e5%8f%82%e8%80%83%e6%96%87%e6%a1%a3-2)
+  - [流程图](#%e6%b5%81%e7%a8%8b%e5%9b%be-2)
+  - [解析](#%e8%a7%a3%e6%9e%90-2)
+    - [交换器](#%e4%ba%a4%e6%8d%a2%e5%99%a8)
+    - [业务解析](#%e4%b8%9a%e5%8a%a1%e8%a7%a3%e6%9e%90-1)
+    - [生产者](#%e7%94%9f%e4%ba%a7%e8%80%85-4)
+    - [消费者](#%e6%b6%88%e8%b4%b9%e8%80%85-4)
+  - [运行](#%e8%bf%90%e8%a1%8c-2)
+  - [全部代码](#%e5%85%a8%e9%83%a8%e4%bb%a3%e7%a0%81-2)
+    - [生产者](#%e7%94%9f%e4%ba%a7%e8%80%85-5)
+    - [消费者](#%e6%b6%88%e8%b4%b9%e8%80%85-5)
 - [4.Routing](#4routing)
   - [参考文档](#%e5%8f%82%e8%80%83%e6%96%87%e6%a1%a3-3)
 - [5.Topic](#5topic)
@@ -311,6 +321,144 @@ namespace Jiamiao.x.RabbitMq.WorkQueues.Receive
 ## 3.Publish/Subscribe
 ### 参考文档
 https://yq.aliyun.com/articles/642455
+### 流程图
+![PublishSubscribe.png](https://i.loli.net/2019/08/06/l6x2eH4VkufaYAy.png)
+### 解析
+#### 交换器
+交换器一方面接受来自消息生产者的消息，另一方面按照一定的逻辑规则将消息推送到消息队列中，
+
+*在RabbitMQ中，消息传递模型的核心理念是生产者从来不会把任何消息直接发送到队列，而是发送到交换机，由交换机自行决定分发到指定(一个或多个)队列中，消息生产者甚至不知道消息是否会被分到任何队列中*
+
+#### 业务解析
+消息生产者将消息发送到名字为*logs*的*fanout*类型的交换机(*fanout*为广播交换机)，消费者A和消费者B订阅*logs*交换机，接受生产者发送的消息，生产者A将消息打印到控制台，生产者B将消息保存到本地文件
+#### 生产者
+- 项目名称：Jiamiao.x.RabbitMq.Publish_Subscribe.Publish
+- 实例化*ConnectionFactory*，创建*Connection*，创建*Channel*
+  ```C#
+  var factory = new ConnectionFactory() {HostName = "localhost"};
+  using var connection = factory.CreateConnection();
+  using var channel = connection.CreateModel();
+  ```
+- 定义名字为*logs*的*fanout*交换机
+  ```C#
+  channel.ExchangeDeclare("logs",ExchangeType.Fanout);
+  ```
+- 发送当前事件到交换机
+  ```C#
+  var message = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+  var body = Encoding.UTF8.GetBytes(message);
+  channel.BasicPublish(exchange:"logs", routingKey:"", basicProperties:null, body:body);
+  ```
+
+#### 消费者
+- 项目名称：Jiamiao.x.RabbitMq.Publish_Subscribe.Subscribe
+- 实例化*ConnectionFactory*，创建*Connection*，创建*Channel*，定义名字为*logs*的*fanout*交换机与生产者代码一致
+- 创建一个非持久化、独占、自动删除的随机命名的消息队列，并绑定到*logs*交换机上
+  ```C#
+  var queueName = channel.QueueDeclare().QueueName;
+  channel.QueueBind(queueName, "logs", "");
+  ```
+- 创建消费者*consumer*，并指定接收到消息的处理业务逻辑
+  ```C#
+  var consumer = new EventingBasicConsumer(channel);
+  consumer.Received += (model, ea) =>
+  {
+      var body = ea.Body;
+      var message = Encoding.UTF8.GetString(body);
+      Console.WriteLine($"{message}   -->  queueName={queueName}");
+  };
+  ```
+- 绑定消费者到消息队列上
+  ```C#
+  channel.BasicConsume(queue:queueName, autoAck:true, consumer:consumer);
+  ```
+
+### 运行
+1. 运行消费者A
+   ```bash
+   cd Jiamiao.x.RabbitMq.Publish_Subscribe.Subscribe
+   dotnet run
+   ```
+2. 运行消费者B(将控制台内容输出到*logs_from_rabbit.log*本地文件中)
+   ```bash
+   cd Jiamiao.x.RabbitMq.Publish_Subscribe.Subscribe
+   dotnet run > logs_from_rabbit.log
+   ````
+3. 运行生产者
+   ```bash
+   cd Jiamiao.x.RabbitMq.Publish_Subscribe.Publish
+   dotnet run
+   ```
+### 全部代码
+#### 生产者
+```C#
+using System;
+using System.Text;
+using RabbitMQ.Client;
+
+namespace Jiamiao.x.RabbitMq.Publish_Subscribe.Publish
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine("========== Publish/Subscribe.Publish ==========");
+            var factory = new ConnectionFactory() {HostName = "localhost"};
+            using var connection = factory.CreateConnection();
+            using var channel = connection.CreateModel();
+            // 定义名叫logs的广播类型交换器
+            channel.ExchangeDeclare("logs",ExchangeType.Fanout);
+            // 为模拟效果，发送当前消息50次，消息间隔1秒钟
+            for (int i = 0; i < 50; i++)
+            {
+                var message = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+                var body = Encoding.UTF8.GetBytes(message);
+                channel.BasicPublish(exchange:"logs", routingKey:"", basicProperties:null, body:body);
+                Console.WriteLine($"Send Content [{message}]");
+                Thread.Sleep(1000);
+            }
+            Console.WriteLine("========== Press anyKey to exit ==========");
+            Console.ReadKey();
+        }
+    }
+}
+```
+#### 消费者
+```C#
+using System;
+using System.Text;
+using System.Threading;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+
+namespace Jiamiao.x.RabbitMq.Publish_Subscribe.Subscribe
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine("========== Publish/Subscribe.Subscribe ==========");
+            var factory = new ConnectionFactory() {HostName = "localhost"};
+            using var connection = factory.CreateConnection();
+            using var channel = connection.CreateModel();
+            channel.ExchangeDeclare("logs",ExchangeType.Fanout);
+            var queueName = channel.QueueDeclare().QueueName;
+            channel.QueueBind(queueName, "logs", "");
+            Console.WriteLine("Waiting for logs...");
+            var consumer = new EventingBasicConsumer(channel);
+            consumer.Received += (model, ea) =>
+            {
+                var body = ea.Body;
+                var message = Encoding.UTF8.GetString(body);
+                Console.WriteLine($"{message}   -->  queueName={queueName}");
+            };
+            channel.BasicConsume(queue:queueName, autoAck:true, consumer:consumer);
+            Console.WriteLine("========== Press anyKey to exit =========="); Console.WriteLine("");
+            Console.ReadKey();
+        }
+    }
+}
+```
 
 ## 4.Routing
 ### 参考文档
