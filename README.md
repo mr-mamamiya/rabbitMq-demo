@@ -48,6 +48,8 @@
   - [参考文档](#%e5%8f%82%e8%80%83%e6%96%87%e6%a1%a3-4)
   - [流程图](#%e6%b5%81%e7%a8%8b%e5%9b%be-4)
   - [解析](#%e8%a7%a3%e6%9e%90-4)
+    - [Topic交换器与Routing交换器区别](#topic%e4%ba%a4%e6%8d%a2%e5%99%a8%e4%b8%8erouting%e4%ba%a4%e6%8d%a2%e5%99%a8%e5%8c%ba%e5%88%ab)
+    - [基本代码](#%e5%9f%ba%e6%9c%ac%e4%bb%a3%e7%a0%81)
   - [运行](#%e8%bf%90%e8%a1%8c-4)
   - [全部代码](#%e5%85%a8%e9%83%a8%e4%bb%a3%e7%a0%81-4)
 - [6.RPC](#6rpc)
@@ -637,7 +639,21 @@ namespace Jiamiao.x.RabbitMq.Routing.Receive
 ### 参考文档
 https://yq.aliyun.com/articles/642452
 ### 流程图
+![Topic.png](https://i.loli.net/2019/08/07/MTNwEzpA2lSVHRk.png)
 ### 解析
+#### Topic交换器与Routing交换器区别
+*topic*交换器的*routingKey*必须是*一个由点分割的单词列表*，类似`order.log.info`，*routingKey*可以包含任意数量的单词，但不能超过255个字节的上限
+
+注意：
+
+`*`(星号)可以代表一个单词
+
+`#`(哈希)可以代表零个或多个单词
+
+一句话概括：`Routing`交换器的`routingKey`是一个单词，`Topic`交换器的`routingKey`是一组由英文点分割的单词列表，并且在消费者端进行订阅的时候可以使用`*`和`#`这两个通配符来做更灵活的订阅
+
+#### 基本代码
+
 ### 运行
 ### 全部代码
 
