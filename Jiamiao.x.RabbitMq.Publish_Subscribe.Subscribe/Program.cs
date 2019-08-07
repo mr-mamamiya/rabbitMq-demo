@@ -36,7 +36,7 @@ namespace Jiamiao.x.RabbitMq.Publish_Subscribe.Subscribe
                 Thread.Sleep(1000);
             };
 
-            channel.BasicConsume(queueName, true, consumer);
+            channel.BasicConsume(queue:queueName, autoAck:true, consumer:consumer);
 
             Console.WriteLine("========== Press anyKey to exit =========="); Console.WriteLine("");
             Console.ReadKey();

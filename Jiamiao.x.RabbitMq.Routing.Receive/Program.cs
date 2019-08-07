@@ -33,7 +33,7 @@ namespace Jiamiao.x.RabbitMq.Routing.Receive
 
             foreach (var logType in args)
             {
-                channel.QueueBind(queueName, "direct_logs", logType);
+                channel.QueueBind(queue:queueName, exchange:"direct_logs", routingKey:logType);
                 Console.WriteLine($"Bind routingKey -> {logType}");
             }
 

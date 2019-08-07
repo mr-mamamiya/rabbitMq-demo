@@ -35,6 +35,13 @@
     - [消费者](#%e6%b6%88%e8%b4%b9%e8%80%85-5)
 - [4.Routing](#4routing)
   - [参考文档](#%e5%8f%82%e8%80%83%e6%96%87%e6%a1%a3-3)
+  - [流程图](#%e6%b5%81%e7%a8%8b%e5%9b%be-3)
+  - [解析](#%e8%a7%a3%e6%9e%90-3)
+    - [业务解析](#%e4%b8%9a%e5%8a%a1%e8%a7%a3%e6%9e%90-2)
+    - [生产者](#%e7%94%9f%e4%ba%a7%e8%80%85-6)
+    - [消费者](#%e6%b6%88%e8%b4%b9%e8%80%85-6)
+  - [运行](#%e8%bf%90%e8%a1%8c-3)
+  - [全部代码](#%e5%85%a8%e9%83%a8%e4%bb%a3%e7%a0%81-3)
 - [5.Topic](#5topic)
   - [参考文档](#%e5%8f%82%e8%80%83%e6%96%87%e6%a1%a3-4)
 - [6.RPC](#6rpc)
@@ -463,6 +470,72 @@ namespace Jiamiao.x.RabbitMq.Publish_Subscribe.Subscribe
 ## 4.Routing
 ### 参考文档
 https://yq.aliyun.com/articles/642453
+### 流程图
+![Routing.png](https://i.loli.net/2019/08/07/9YGtIXNMdJSWgB2.png)
+### 解析
+#### 业务解析
+消息生产者产生4中类型的消息，分别是`error` `info` `monitor` `warning`，将消息发送到名字为*direct_logs*类型为*direct*的交换机，并按照消息类型指定消息的*routingKey*，消费者从启动命令参数获取需要订阅的*routingKey*，并将接收到的消息打印到控制台
+#### 生产者
+- 项目名称：Jiamiao.x.RabbitMq.Routing.Send
+- 实例化*ConnectionFactory*，创建*Connection*，创建*Channel*
+  ```C#
+  var factory = new ConnectionFactory() { HostName = "localhost" };
+  using var connection = factory.CreateConnection();
+  using var channel = connection.CreateModel();
+  ```
+- 定义名字为*direct_logs*的*direct*交换机
+  ```C#
+  channel.ExchangeDeclare("direct_logs", ExchangeType.Direct);
+  ```
+- 发送指定内容到交换机，其中指定*routingKey*
+  ```C#
+  var routingKey = "routingKey";
+  var message = $"{routingKey} : {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+  var body = Encoding.UTF8.GetBytes(message);
+  channel.BasicPublish("direct_logs", logType, null, body);
+  ```
+#### 消费者
+- 项目名称：Jiamiao.x.RabbitMq.Routing.Receive
+- 实例化*ConnectionFactory*，创建*Connection*，创建*Channel*，定义名字为*direct_logs*的*direct*交换机与生产者代码一致
+- 创建一个非持久化、独占、自动删除的随机命名的消息队列，绑定到*direct*交换机上，并指定一个*routingKey*
+  ```C#
+  var queueName = channel.QueueDeclare().QueueName;
+  channel.QueueBind(queue:queueName, exchange:"direct_logs", routingKey:"routingKey");
+  ```
+- 创建消费者*consumer*，并指定接受到消息的处理业务逻辑
+  ```C#
+  var consumer = new EventingBasicConsumer(channel);
+  consumer.Received += (model, ea) =>
+  {
+      var body = ea.Body;
+      var message = Encoding.UTF8.GetString(body);
+      var routingKey = ea.RoutingKey;
+      Console.WriteLine($"[{workedId}]  Receive Content:[{message}]  RoutingKey:[{routingKey}]");
+  };
+  ```
+- 绑定消费者到消息队列上
+  ```C#
+  channel.BasicConsume(queueName, true, consumer);
+  ```
+
+### 运行
+1. 运行消费者A，接收*error*类型的*routingKey*
+   ```bash
+   cd Jiamiao.x.RabbitMq.Routing.Receive
+   dotnet run error
+   ```
+2. 运行消费者B，接受*info* *monitor* *warning*三种类型的*routingKey*
+   ```bash
+   cd Jiamiao.x.RabbitMq.Routing.Receive
+   dotnet run info monitor warning
+   ```
+3. 运行生产者
+   ```bash
+   cd Jiamiao.x.RabbitMq.Routing.Send
+   dotnet run
+   ```
+
+### 全部代码
 
 ## 5.Topic
 ### 参考文档
