@@ -42,8 +42,14 @@
     - [消费者](#%e6%b6%88%e8%b4%b9%e8%80%85-6)
   - [运行](#%e8%bf%90%e8%a1%8c-3)
   - [全部代码](#%e5%85%a8%e9%83%a8%e4%bb%a3%e7%a0%81-3)
+    - [生产者](#%e7%94%9f%e4%ba%a7%e8%80%85-7)
+    - [消费者](#%e6%b6%88%e8%b4%b9%e8%80%85-7)
 - [5.Topic](#5topic)
   - [参考文档](#%e5%8f%82%e8%80%83%e6%96%87%e6%a1%a3-4)
+  - [流程图](#%e6%b5%81%e7%a8%8b%e5%9b%be-4)
+  - [解析](#%e8%a7%a3%e6%9e%90-4)
+  - [运行](#%e8%bf%90%e8%a1%8c-4)
+  - [全部代码](#%e5%85%a8%e9%83%a8%e4%bb%a3%e7%a0%81-4)
 - [6.RPC](#6rpc)
   - [参考文档](#%e5%8f%82%e8%80%83%e6%96%87%e6%a1%a3-5)
 
@@ -536,10 +542,104 @@ https://yq.aliyun.com/articles/642453
    ```
 
 ### 全部代码
+#### 生产者
+```C#
+using System;
+using System.Text;
+using System.Threading;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+
+namespace Jiamiao.x.RabbitMq.Routing.Send
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine("========== Routing.Send ==========");
+            var factory = new ConnectionFactory() { HostName = "localhost" };
+            using var connection = factory.CreateConnection();
+            using var channel = connection.CreateModel();
+            channel.ExchangeDeclare("direct_logs", ExchangeType.Direct);
+            string[] logTypes = { "error", "info", "monitor", "warning" };
+            var random = new Random();
+            for (int i = 0; i < 100; i++)
+            {
+                var logType = logTypes[random.Next(0, logTypes.Length)];
+                var message = $"{logType} : {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+                var body = Encoding.UTF8.GetBytes(message);
+                channel.BasicPublish("direct_logs", logType, null, body);
+                Console.WriteLine($"Send Content:{message} to {logType}");
+                Thread.Sleep(1000);
+            }
+            Console.WriteLine("Press anyKey to exit");
+            Console.ReadKey();
+        }
+    }
+}
+```
+#### 消费者
+```C#
+using System;
+using System.Text;
+using System.Threading;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+using RabbitMQ.Client.Framing;
+
+namespace Jiamiao.x.RabbitMq.Routing.Receive
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            Console.WriteLine("========== Routing.Receive ==========");
+            var workedId = Guid.NewGuid().ToString();
+            var factory = new ConnectionFactory() { HostName = "localhost" };
+            using var connection = factory.CreateConnection();
+            using var channel = connection.CreateModel();
+            channel.ExchangeDeclare("direct_logs", ExchangeType.Direct);
+            var queueName = channel.QueueDeclare().QueueName;
+            if (args.Length < 1)
+            {
+                Console.WriteLine($"Usage:{Environment.GetCommandLineArgs()[0]} [info] [warning] [error]");
+                Console.WriteLine("Press [enter] to exit.");
+                Console.ReadLine();
+                Environment.ExitCode = 1;
+                return;
+            }
+            foreach (var logType in args)
+            {
+                channel.QueueBind(queue:queueName, exchange:"direct_logs", routingKey:logType);
+                Console.WriteLine($"Bind routingKey -> {logType}");
+            }
+            Console.WriteLine("waiting for message...");
+            var consumer = new EventingBasicConsumer(channel);
+            consumer.Received += (model, ea) =>
+            {
+                var body = ea.Body;
+                var message = Encoding.UTF8.GetString(body);
+                var routingKey = ea.RoutingKey;
+                Console.WriteLine($"[{workedId}]  Receive Content:[{message}]  RoutingKey:[{routingKey}]");
+            };
+            channel.BasicConsume(queueName, true, consumer);
+
+            Console.WriteLine("Press anyKey to exit");
+            Console.ReadKey();
+
+        }
+    }
+}
+```
 
 ## 5.Topic
 ### 参考文档
 https://yq.aliyun.com/articles/642452
+### 流程图
+### 解析
+### 运行
+### 全部代码
 
 ## 6.RPC
 ### 参考文档
