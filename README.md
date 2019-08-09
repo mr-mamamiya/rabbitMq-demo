@@ -49,9 +49,12 @@
   - [流程图](#%e6%b5%81%e7%a8%8b%e5%9b%be-4)
   - [解析](#%e8%a7%a3%e6%9e%90-4)
     - [Topic交换器与Routing交换器区别](#topic%e4%ba%a4%e6%8d%a2%e5%99%a8%e4%b8%8erouting%e4%ba%a4%e6%8d%a2%e5%99%a8%e5%8c%ba%e5%88%ab)
-    - [基本代码](#%e5%9f%ba%e6%9c%ac%e4%bb%a3%e7%a0%81)
+    - [生产者](#%e7%94%9f%e4%ba%a7%e8%80%85-8)
+    - [消费者](#%e6%b6%88%e8%b4%b9%e8%80%85-8)
   - [运行](#%e8%bf%90%e8%a1%8c-4)
   - [全部代码](#%e5%85%a8%e9%83%a8%e4%bb%a3%e7%a0%81-4)
+    - [生产者](#%e7%94%9f%e4%ba%a7%e8%80%85-9)
+    - [消费者](#%e6%b6%88%e8%b4%b9%e8%80%85-9)
 - [6.RPC](#6rpc)
   - [参考文档](#%e5%8f%82%e8%80%83%e6%96%87%e6%a1%a3-5)
 
@@ -652,10 +655,175 @@ https://yq.aliyun.com/articles/642452
 
 一句话概括：`Routing`交换器的`routingKey`是一个单词，`Topic`交换器的`routingKey`是一组由英文点分割的单词列表，并且在消费者端进行订阅的时候可以使用`*`和`#`这两个通配符来做更灵活的订阅
 
-#### 基本代码
+#### 生产者
+- 项目名称：Jiamiao.x.RabbitMq.Topic.Send
+- 实例化*ConnectionFactory*，创建*Connection*，创建*Channel*，定义名字为*topic_logs*的*Topic*交换机(与*Routing*交换机基本类似)
+  ```C#
+  var factory = new ConnectionFactory() {HostName = "localhost"};
+  using var connection = factory.CreateConnection();
+  using var channel = connection.CreateModel();
+  channel.ExchangeDeclare("topic_logs", ExchangeType.Topic);
+  ```
+- 发送消息到交换机
+  ```C#
+  var routingKey = "ProjectName.FeatureName.LevelName";
+  var message = $"{routingKey} : {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+  var body = Encoding.UTF8.GetBytes(message);
+  channel.BasicPublish(exchange: "topic_logs", routingKey: routingKey, basicProperties: null, body: body);
+  ```
+
+#### 消费者
+- 项目名称：Jiamiao.x.RabbitMq.Topic.Receive
+- 实例化*ConnectionFactory*，创建*Connection*，创建*Channel*，定义名字为*topic_logs*的*Topic*交换机与生产者一致
+- 创建一个非持久化、独占、自动删除的随机命名的消息队列，绑定到*topic_logs*交换机上，并指定一个*routingKey*
+  ```C#
+  var queueName = channel.QueueDeclare().QueueName;
+  var routingKey = "ProjectName.FeatureName.LevelName";
+  channel.QueueBind(queue:queueName, exchange:"topic_logs", routingKey:routingKey);
+  ```
+- 创建消费者*consumer*，并指定接受到消息的处理业务逻辑
+  ```C#
+  var consumer = new EventingBasicConsumer(channel);
+  consumer.Received += (model, ea) =>
+  {
+      var body = ea.Body;
+      var message = Encoding.UTF8.GetString(body);
+      var routingKey = ea.RoutingKey;
+      Console.WriteLine($"[{workerId}]  Receive Content:[{message}]  RoutingKey:[{routingKey}]");
+  };
+  ```
+- 绑定消费者到消息队列上
+  ```C#
+  channel.BasicConsume(queueName, true, consumer);
+  ```
 
 ### 运行
+1. 运行消费者A，指定`routingKey=#`
+   ```Bash
+   cd Jiamiao.x.RabbitMq.Topic.Receive
+   dotnet run '#'
+   ```
+2. 运行消费者B，指定`routingKey=ProjectName.#`
+   ```bash
+   cd Jiamiao.x.RabbitMq.Topic.Receive
+   dotnet run 'ProjectName.#'
+   ```
+3. 运行消费者C，指定`routingKey=*.FeatureName.*`
+   ```bash
+   cd Jiamiao.x.RabbitMq.Topic.Receive
+   dotnet run '*.FeatureName.*'
+   ```
+4. 运行生产者
+   ```bash
+   cd Jiamiao.x.RabbitMq.Topic.Send
+   dotnet run
+   ```
 ### 全部代码
+#### 生产者
+```C#
+using System;
+using System.Text;
+using System.Threading;
+using RabbitMQ.Client;
+
+namespace Jiamiao.x.RabbitMq.Topic.Send
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine("========== Topic.Send ==========");
+
+            var factory = new ConnectionFactory() {HostName = "localhost"};
+            using var connection = factory.CreateConnection();
+            using var channel = connection.CreateModel();
+
+            string[] projectNames = {"A","B","C" };
+            string[] featureNames = {"Order", "Customer", "Product"};
+            string[] logTypes = {"Monitor", "Info", "Warning", "Error"};
+
+            channel.ExchangeDeclare("topic_logs", ExchangeType.Topic);
+
+            var random = new Random();
+            for (int i = 0; i < 300; i++)
+            {
+                // 按条件随机产生300个routingKey
+                var projectName = projectNames[random.Next(0, projectNames.Length)];
+                var featureName = featureNames[random.Next(0, featureNames.Length)];
+                var logType = logTypes[random.Next(0, logTypes.Length)];
+
+                var routingKey = $"{projectName}.{featureName}.{logType}";
+                var message = $"{routingKey} : {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+                var body = Encoding.UTF8.GetBytes(message);
+
+                channel.BasicPublish(exchange: "topic_logs", routingKey: routingKey, basicProperties: null, body: body);
+                Console.WriteLine($"Send Content:{message} to {routingKey}");
+                Thread.Sleep(1000);
+            }
+
+            Console.WriteLine("Press anyKey to exit");
+            Console.ReadKey();
+        }
+    }
+}
+
+```
+#### 消费者
+```C#
+using System;
+using System.Text;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+
+namespace Jiamiao.x.RabbitMq.Topic.Receive
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine("========== Topic.Send ==========");
+
+            var workerId = Guid.NewGuid().ToString();
+
+            var factory = new ConnectionFactory() {HostName = "localhost"};
+            using var connection = factory.CreateConnection();
+            using var channel = connection.CreateModel();
+
+            channel.ExchangeDeclare("topic_logs", ExchangeType.Topic);
+            var queueName = channel.QueueDeclare().QueueName;
+
+            if (args.Length < 1)
+            {
+                Console.Error.WriteLine("Usage: {0} [binding_key...]", Environment.GetCommandLineArgs()[0]);
+                Console.WriteLine(" Press [enter] to exit.");
+                Console.ReadLine();
+                Environment.ExitCode = 1;
+                return;
+            }
+
+            foreach (var routingKey in args)
+            {
+                Console.WriteLine($"Bind routing key -> {routingKey}");
+                channel.QueueBind(queueName, "topic_logs",routingKey);
+            }
+
+            var consumer = new EventingBasicConsumer(channel);
+            consumer.Received += (model, ea) =>
+            {
+                var body = ea.Body;
+                var message = Encoding.UTF8.GetString(body);
+                var routingKey = ea.RoutingKey;
+                Console.WriteLine($"[{workerId}]  Receive Content:[{message}]  RoutingKey:[{routingKey}]");
+            };
+            channel.BasicConsume(queueName, true, consumer);
+
+            Console.WriteLine("Press anyKey to exit");
+            Console.ReadKey();
+        }
+    }
+}
+
+```
 
 ## 6.RPC
 ### 参考文档

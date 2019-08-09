@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading;
 using RabbitMQ.Client;
@@ -53,5 +55,6 @@ namespace Jiamiao.x.RabbitMq.Routing.Receive
             Console.ReadKey();
 
         }
+
     }
 }
